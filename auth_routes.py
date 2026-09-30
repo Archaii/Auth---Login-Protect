@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Body
+from fastapi import APIRouter, Body, Depends, Response
 from fastapi.responses import JSONResponse
 from supabase_auth.errors import AuthError
 
+from auth_guard import get_bearer_token, get_current_user
 from supabase_client import new_client
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -78,3 +79,19 @@ def login(payload: dict | None = Body(default=None, examples=[CREDENTIALS_EXAMPL
         "token_type": session.token_type,
         "expires_in": session.expires_in,
     }
+
+
+@router.post(
+    "/logout",
+    status_code=204,
+    dependencies=[Depends(get_current_user)],
+    description="Ends the current session. Requires a Bearer token.",
+)
+def logout(token: str = Depends(get_bearer_token)):
+    # Our per-request client holds no session, so auth.sign_out() alone would
+    # have nothing to revoke. admin.sign_out(token) is the call sign_out() makes
+    # internally: it sends the user's own JWT (not the service_role key) to
+    # Supabase, which ends this session and revokes its refresh token.
+    new_client().auth.admin.sign_out(token, scope="local")
+
+    return Response(status_code=204)

@@ -5,6 +5,7 @@ import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException
 
 from auth_routes import router as auth_router
 from protected_routes import router as protected_router
@@ -30,6 +31,15 @@ app.include_router(protected_router)
 def invalid_request_body(request: Request, exc: RequestValidationError):
     """Return 400 with our JSON error shape instead of FastAPI's default 422."""
     return JSONResponse(status_code=400, content={"error": "Request body must be a valid JSON object"})
+
+
+@app.exception_handler(HTTPException)
+def http_error(request: Request, exc: HTTPException):
+    """Return {"error": ...} instead of FastAPI's default {"detail": ...}.
+
+    Covers the 401s raised by the auth guard, plus 404 and 405.
+    """
+    return JSONResponse(status_code=exc.status_code, content={"error": exc.detail}, headers=exc.headers)
 
 
 @app.get("/", description="Returns the API name and version")
