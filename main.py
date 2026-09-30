@@ -7,6 +7,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from auth_routes import router as auth_router
+from protected_routes import router as protected_router
+from public_routes import router as public_router
 from supabase_client import check_connection
 
 
@@ -20,6 +22,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Auth API", lifespan=lifespan)
 app.include_router(auth_router)
+app.include_router(public_router)
+app.include_router(protected_router)
 
 
 @app.exception_handler(RequestValidationError)
