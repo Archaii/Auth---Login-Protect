@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException
 
@@ -21,7 +22,16 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Auth API", lifespan=lifespan)
+app = FastAPI(
+    title="Auth API",
+    version="1.0",
+    description=(
+        "Sign up, log in, and log out with Supabase Auth. "
+        "To call a protected route: log in, copy the `access_token`, "
+        "click **Authorize**, and paste it."
+    ),
+    lifespan=lifespan,
+)
 app.include_router(auth_router)
 app.include_router(public_router)
 app.include_router(protected_router)
@@ -40,6 +50,32 @@ def http_error(request: Request, exc: HTTPException):
     Covers the 401s raised by the auth guard, plus 404 and 405.
     """
     return JSONResponse(status_code=exc.status_code, content={"error": exc.detail}, headers=exc.headers)
+
+
+def custom_openapi():
+    """Drop the automatic 422 responses from the docs.
+
+    invalid_request_body() turns every validation error into a 400, so the API
+    never actually returns 422.
+    """
+    if app.openapi_schema:
+        return app.openapi_schema
+
+    schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        description=app.description,
+        routes=app.routes,
+    )
+    for operations in schema["paths"].values():
+        for operation in operations.values():
+            operation.get("responses", {}).pop("422", None)
+
+    app.openapi_schema = schema
+    return schema
+
+
+app.openapi = custom_openapi
 
 
 @app.get("/", description="Returns the API name and version")

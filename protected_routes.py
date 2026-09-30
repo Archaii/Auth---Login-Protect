@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends
 from supabase_auth.types import User
 
-from auth_guard import get_current_user
+from auth_guard import UNAUTHORIZED_RESPONSE, get_current_user
 
-router = APIRouter(prefix="/protected", tags=["protected"])
+router = APIRouter(prefix="/protected", tags=["protected"], responses=UNAUTHORIZED_RESPONSE)
 
 
 @router.get("/profile", description="Returns the logged-in user's profile. Requires a Bearer token.")

@@ -1,21 +1,40 @@
-from fastapi import Depends, Header, HTTPException
+from fastapi import Depends, HTTPException
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from supabase_auth.errors import AuthError
 from supabase_auth.types import User
 
 from supabase_client import new_client
 
+# Reads "Authorization: Bearer <token>" and registers a bearer security scheme
+# in OpenAPI, which gives every route using it a padlock in Swagger UI (/docs).
+# auto_error=False so we return our own 401 JSON instead of FastAPI's default.
+bearer_scheme = HTTPBearer(
+    scheme_name="BearerAuth",
+    bearerFormat="JWT",
+    description="Paste the access_token from POST /auth/login (without the word Bearer).",
+    auto_error=False,
+)
 
-def get_bearer_token(authorization: str | None = Header(default=None)) -> str:
+# Documents the guard's 401 response on every protected route in Swagger UI.
+UNAUTHORIZED_RESPONSE = {
+    401: {
+        "description": "Missing, malformed, invalid, or expired token",
+        "content": {"application/json": {"example": {"error": "Invalid or expired token"}}},
+    }
+}
+
+
+def get_bearer_token(credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme)) -> str:
     """Return the token from an "Authorization: Bearer <token>" header.
 
     Raises 401 if the header is missing, uses another scheme, or has no token.
     """
-    parts = authorization.split() if authorization else []
+    token = credentials.credentials.strip() if credentials else ""
 
-    if len(parts) != 2 or parts[0].lower() != "bearer":
+    if not token or " " in token:
         raise HTTPException(status_code=401, detail="Access token required")
 
-    return parts[1]
+    return token
 
 
 def get_current_user(token: str = Depends(get_bearer_token)) -> User:

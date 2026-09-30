@@ -2,12 +2,26 @@ from fastapi import APIRouter, Body, Depends, Response
 from fastapi.responses import JSONResponse
 from supabase_auth.errors import AuthError
 
-from auth_guard import get_bearer_token, get_current_user
+from auth_guard import UNAUTHORIZED_RESPONSE, get_bearer_token, get_current_user
 from supabase_client import new_client
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 CREDENTIALS_EXAMPLE = {"email": "test@example.com", "password": "password123"}
+
+# Error responses shown in Swagger UI (/docs).
+BAD_REQUEST_RESPONSE = {
+    400: {
+        "description": "Missing email or password, or input rejected by Supabase",
+        "content": {"application/json": {"example": {"error": "Email and password are required"}}},
+    }
+}
+INVALID_LOGIN_RESPONSE = {
+    401: {
+        "description": "Wrong email or password",
+        "content": {"application/json": {"example": {"error": "Invalid login credentials"}}},
+    }
+}
 
 
 def read_credentials(payload: dict | None):
@@ -26,7 +40,12 @@ def read_credentials(payload: dict | None):
     return email.strip(), password
 
 
-@router.post("/signup", status_code=201, description="Creates a new user account in Supabase Auth")
+@router.post(
+    "/signup",
+    status_code=201,
+    description="Creates a new user account in Supabase Auth",
+    responses=BAD_REQUEST_RESPONSE,
+)
 def signup(payload: dict | None = Body(default=None, examples=[CREDENTIALS_EXAMPLE])):
     credentials = read_credentials(payload)
 
@@ -49,7 +68,11 @@ def signup(payload: dict | None = Body(default=None, examples=[CREDENTIALS_EXAMP
     return {"user": response.user.model_dump(mode="json")}
 
 
-@router.post("/login", description="Logs in with email and password and returns a JWT access token")
+@router.post(
+    "/login",
+    description="Logs in with email and password and returns a JWT access token",
+    responses={**BAD_REQUEST_RESPONSE, **INVALID_LOGIN_RESPONSE},
+)
 def login(payload: dict | None = Body(default=None, examples=[CREDENTIALS_EXAMPLE])):
     credentials = read_credentials(payload)
 
@@ -86,6 +109,7 @@ def login(payload: dict | None = Body(default=None, examples=[CREDENTIALS_EXAMPL
     status_code=204,
     dependencies=[Depends(get_current_user)],
     description="Ends the current session. Requires a Bearer token.",
+    responses=UNAUTHORIZED_RESPONSE,
 )
 def logout(token: str = Depends(get_bearer_token)):
     # Our per-request client holds no session, so auth.sign_out() alone would
