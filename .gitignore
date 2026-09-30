@@ -1,0 +1,19 @@
+# Python virtual environments
+**/.venv/
+**/venv/
+
+# Python cache files
+**/__pycache__/
+*.pyc
+
+# Environment variables (Supabase keys live here, never commit it)
+.env
+
+# Editor files
+.vscode/
+
+# Assignment PDFs
+*.pdf
+
+# AI-generated comparison code (bonus stage)
+ai-version/
