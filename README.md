@@ -153,6 +153,8 @@ curl -i -X POST http://127.0.0.1:8000/auth/logout \
 
 Open http://127.0.0.1:8000/docs. A padlock marks each protected route: `/auth/logout`, `/protected/profile`, and `/protected/dashboard`.
 
+![Swagger UI: padlocks on the protected routes](docs/swagger-routes.png)
+
 1. Run **POST /auth/login** with **Try it out**. Copy the `access_token` from the response body.
 2. Click **Authorize** at the top right. Paste the token without the word `Bearer`, then click **Authorize**.
 3. Run **GET /protected/profile** with **Try it out**. The response is `200` with your user details.
